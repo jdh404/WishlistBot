@@ -75,11 +75,11 @@ pytest
 
 After `/start`, the bot displays a permanent reply keyboard with:
 
-- `📂 My wishlists`
-- `➕ New wishlist`
-- `➕ Add games`
-- `✏️ Manage wishlists`
-- `📊 Statistics`
+- ` My wishlists`
+- ` New wishlist`
+- ` Add games`
+- ` Manage wishlists`
+- ` Statistics`
 
 Wishlist navigation, sorting, pagination, purchase status changes, and management actions use inline keyboards. Existing Telegram messages are edited where possible to keep the interface compact.
 
