@@ -1,6 +1,7 @@
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, KeyboardButton, Message, ReplyKeyboardMarkup
+from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -9,6 +10,7 @@ from handlers.wishlists import render_list
 from keyboards.inline import confirm_keyboard, manage_games_keyboard, move_targets_keyboard, wishlist_keyboard
 from states.forms import EditGameForm, GameForm
 from utils.validators import parse_currency, parse_price
+from utils.game_parser import parse_game_list
 
 router = Router()
 
@@ -139,13 +141,50 @@ async def begin_add(callback: CallbackQuery, state: FSMContext):
 
 
 @router.message(GameForm.title)
-async def game_title(message: Message, state: FSMContext):
+async def game_title(message: Message, state: FSMContext, session_factory: async_sessionmaker):
+    if "\n" in message.text:
+        games, errors = parse_game_list(message.text)
+        if games:
+            await state.update_data(bulk_games=games)
+            await state.set_state(GameForm.currency)
+            await message.answer("Список распознан. Добавляю игры…")
+            # Reuse the normal save handler without asking for currency again.
+            await save_bulk_games(message, state, session_factory)
+            if errors:
+                await message.answer("Не удалось распознать:\n" + "\n".join(errors))
+            return
+        if errors:
+            await message.answer("Не удалось распознать строки. Формат: Название — 123.00 UAH")
+            return
     if not message.text.strip():
         await message.answer("Название не может быть пустым.")
         return
     await state.update_data(title=message.text.strip())
     await state.set_state(GameForm.price)
     await message.answer("Введите цену, например: 124.00")
+
+
+async def save_bulk_games(message: Message, state: FSMContext, session_factory):
+    from services.game_service import add_game
+
+    data = await state.get_data()
+    added = []
+    duplicates = []
+    async with session_factory() as session:
+        for title, price, currency in data["bulk_games"]:
+            game, error = await add_game(session, message.from_user.id, data["wishlist_id"], title, price, currency)
+            if game:
+                added.append(game)
+            elif error:
+                duplicates.append(title)
+        await session.commit()
+    await state.clear()
+    added.sort(key=lambda game: Decimal(game.price), reverse=True)
+    lines = ["✅ Добавлено:"]
+    lines.extend(f"{i}. {game.title} — {game.price:.2f} {game.currency}" for i, game in enumerate(added, 1))
+    if duplicates:
+        lines.append("\nУже были в списке: " + ", ".join(duplicates))
+    await message.answer("\n".join(lines), reply_markup=ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="📂 Мои списки")]], resize_keyboard=True))
 
 
 @router.message(GameForm.price)
