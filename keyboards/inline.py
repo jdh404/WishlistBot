@@ -6,7 +6,15 @@ def wishlist_keyboard(wishlists, action: str = "view"):
 
 
 def list_keyboard(wishlist_id: int, games, page: int, pages: int, sort: str):
-    rows = [[InlineKeyboardButton(text=f"{i + 1} {'✅' if game.is_purchased else '⬜'}", callback_data=f"toggle:{game.id}:{wishlist_id}:{page}:{sort}") for i, game in enumerate(games)]]
+    game_buttons = [
+        InlineKeyboardButton(
+            text=f"{i + 1}{' ✅' if game.is_purchased else ''}",
+            callback_data=f"toggle:{game.id}:{wishlist_id}:{page}:{sort}",
+        )
+        for i, game in enumerate(games)
+    ]
+    # Five buttons per row keeps the number and the check mark readable.
+    rows = [game_buttons[i:i + 5] for i in range(0, len(game_buttons), 5)]
     rows.append([
         InlineKeyboardButton(text="Цена ↑", callback_data=f"list:{wishlist_id}:{page}:price_asc"),
         InlineKeyboardButton(text="Цена ↓", callback_data=f"list:{wishlist_id}:{page}:price_desc"),
