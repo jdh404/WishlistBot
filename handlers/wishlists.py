@@ -80,8 +80,8 @@ async def render_list(callback, session_factory, wishlist_id: int, page: int, so
     pages = max(1, (len(games) + size - 1) // size)
     page = max(1, min(page, pages))
     shown = games[(page - 1) * size: page * size]
-    lines = [f"📂 {wishlist.name}", ""]
-    lines += [f"{(page - 1) * size + i}. {'✅' if game.is_purchased else '⬜'} {game.title} — {game.price:.2f} {game.currency}" for i, game in enumerate(shown, 1)]
+    lines = [wishlist.name]
+    lines += [f"{(page - 1) * size + i}. {'✅ ' if game.is_purchased else ''}{game.title} — {game.price:.2f} {game.currency}" for i, game in enumerate(shown, 1)]
     if not shown: lines.append("В списке пока нет игр.")
     await callback.message.edit_text("\n".join(lines), reply_markup=list_keyboard(wishlist.id, shown, page, pages, sort))
 
